@@ -169,15 +169,14 @@ def get_local_identity(cfg: dict) -> Optional[str]:
             log.warning(f"Could not fetch local identity via REST: {e}")
             return None
     else:
+        # Check config-supplied identity first (always available, no RNS init needed)
+        identity_hash = cfg["rns"].get("node_identity")
+        if identity_hash:
+            return identity_hash
+        # Fall back to bridge's own RNS identity
         try:
             import RNS
             if _rns_initialized:
-                # Use the transport node's identity (the rnsd we peered with sends its own identity hash)
-                # Fall back to config-supplied identity if known
-                identity_hash = cfg["rns"].get("node_identity")
-                if identity_hash:
-                    return identity_hash
-                # Otherwise use our own bridge identity
                 own_id = RNS.Transport.identity
                 if own_id:
                     return own_id.hash.hex()
