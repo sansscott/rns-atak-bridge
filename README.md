@@ -217,6 +217,16 @@ Your node will appear with 0 hops and the label `RNS-af60a4f4` at your `home_lat
 
 ---
 
+## Suite
+
+This project is part of a three-tool open-source Reticulum→ATAK integration suite:
+
+| Project | What it does |
+|---------|-------------|
+| **rns-atak-bridge** (this repo) | Reticulum path table peers → ATAK SA tracks |
+| [rns-lxmf-atak-chat](https://github.com/sansscott/rns-lxmf-atak-chat) | LXMF messages → ATAK GeoChat window |
+| [rns-mesh-observer](https://github.com/sansscott/rns-mesh-observer) | REST + WebSocket API for live Reticulum topology |
+
 ## Related Projects
 
 - [Reticulum Network Stack](https://reticulum.network) — the encrypted mesh networking layer
