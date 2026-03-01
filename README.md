@@ -177,9 +177,35 @@ Full community node list: [github.com/markqvist/Reticulum/wiki/Community-Node-Li
 
 1. Start the bridge on a machine on the same LAN as your ATAK device
 2. Open ATAK → SA multicast receive is enabled by default on `239.2.3.1:6969`
-3. Blue `RNS-*` icons appear on the map after the first poll
+3. After the first poll (may take up to 60s on a quiet network), blue `RNS-*` icons appear on the map
 4. Tap a track → info panel shows full hash, hop count, interface
 5. Stop the bridge → tracks disappear after `stale_minutes` (default: 5 min)
+
+> **First poll shows 0 peers?** This is normal. RNS populates its path table by receiving
+> announces from remote nodes — this takes 30–120 seconds after startup. Wait for the
+> second or third poll (every `poll_interval_sec`, default 30s). The log will say
+> `"Path table empty — peers not yet announced. Will retry next poll."` until peers arrive.
+
+---
+
+## Self-Track (Your Node in ATAK)
+
+To make your own RNS node appear as a track in ATAK, set `node_identity` in `config.yaml`:
+
+```bash
+# Find your rnsd transport identity:
+rnstatus
+# Look for the line: "Transport Identity : af60a4f4863c9bff..."
+```
+
+Then in `config.yaml`:
+
+```yaml
+rns:
+  node_identity: "af60a4f4863c9bff05a9871359d67e1f"  # your full hash here
+```
+
+Your node will appear with 0 hops and the label `RNS-af60a4f4` at your `home_lat`/`home_lon` coordinates.
 
 ---
 
