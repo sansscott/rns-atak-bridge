@@ -1,16 +1,16 @@
 rns:
-  mode: rest              # 'native' (direct RNS lib) or 'rest' (reticulum-mcp API — use on node4)
-  rest_url: http://192.168.1.204:8023
-  peer_host: 192.168.1.204
+  mode: native            # 'native' (direct RNS lib, recommended) or 'rest' (reticulum-mcp API)
+  rest_url: http://127.0.0.1:8023
+  peer_host: 127.0.0.1   # IP of your rnsd TCP server
   peer_port: 4242
-  home_lat: 41.7001       # Fallback lat when peer has no GPS announce
-  home_lon: -74.0
-  node_identity: af60a4f4863c9bff05a9871359d67e1f  # Local rnsd transport identity
+  home_lat: 0.0           # Your location — used as fallback when peer has no GPS announce
+  home_lon: 0.0
+  # node_identity: ""     # Optional: your rnsd transport identity hash for self-track
 
 atak:
   multicast_addr: 239.2.3.1
   multicast_port: 6969
-  tak_server: null        # Optional: "192.168.1.x:8087" for TAK Server TCP
+  tak_server: null        # Optional: "host:port" for TAK Server TCP (cross-subnet)
   poll_interval_sec: 30
   stale_minutes: 5
 

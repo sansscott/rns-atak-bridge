@@ -9,5 +9,8 @@ build/
 .DS_Store
 /tmp/
 rns-identity/
+# CLAUDE.md contains project-specific context for AI assistants — keep local only
+CLAUDE.md
+
 # Local config with real coords — use examples/config.yaml.example instead
 # config.yaml is committed with placeholder values and is safe to track
