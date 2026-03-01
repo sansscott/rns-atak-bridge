@@ -1,5 +1,5 @@
 rns:
-  mode: native            # 'native' (direct RNS lib, recommended) or 'rest' (reticulum-mcp API)
+  mode: rest              # 'native' (direct RNS lib) or 'rest' (reticulum-mcp API — use on node4)
   rest_url: http://192.168.1.204:8023
   peer_host: 192.168.1.204
   peer_port: 4242
