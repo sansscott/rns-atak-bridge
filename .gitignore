@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
+/tmp/
+rns-identity/
+# Local config with real coords — use examples/config.yaml.example instead
+# config.yaml is committed with placeholder values and is safe to track

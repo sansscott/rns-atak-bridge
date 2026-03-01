@@ -1,0 +1,12 @@
+services:
+  rns-atak-bridge:
+    build: .
+    container_name: rns-atak-bridge
+    restart: unless-stopped
+    network_mode: host          # Required for UDP multicast to reach LAN
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - rns-identity:/rns-identity
+
+volumes:
+  rns-identity:

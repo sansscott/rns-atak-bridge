@@ -1,0 +1,33 @@
+rns:
+  # 'native' uses the RNS Python library directly (recommended)
+  # 'rest' uses the reticulum-mcp HTTP REST API
+  mode: native
+
+  # REST mode: URL of your reticulum-mcp instance
+  rest_url: http://127.0.0.1:8023
+
+  # Native mode: host/port of a running rnsd TCP server to peer with
+  peer_host: 127.0.0.1
+  peer_port: 4242
+
+  # Home coordinates — used as fallback when a peer has no GPS data in its announce
+  home_lat: 0.0
+  home_lon: 0.0
+
+atak:
+  # Standard ATAK SA multicast group (works on any LAN with ATAK devices)
+  multicast_addr: 239.2.3.1
+  multicast_port: 6969
+
+  # Optional TAK Server for cross-subnet delivery. Set to null to disable.
+  # Format: "host:port" e.g. "192.168.1.10:8087"
+  tak_server: null
+
+  # How often to re-poll RNS and re-send CoT to ATAK (seconds)
+  poll_interval_sec: 30
+
+  # Track stale time in minutes — ATAK removes the icon when it expires
+  stale_minutes: 5
+
+# Prefix added to the first 8 chars of a peer's destination hash
+callsign_prefix: "RNS-"

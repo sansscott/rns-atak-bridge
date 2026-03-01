@@ -1,0 +1,16 @@
+rns:
+  mode: native            # 'native' (direct RNS lib, recommended) or 'rest' (reticulum-mcp API)
+  rest_url: http://192.168.1.204:8023
+  peer_host: 192.168.1.204
+  peer_port: 4242
+  home_lat: 41.7001       # Fallback lat when peer has no GPS announce
+  home_lon: -74.0
+
+atak:
+  multicast_addr: 239.2.3.1
+  multicast_port: 6969
+  tak_server: null        # Optional: "192.168.1.x:8087" for TAK Server TCP
+  poll_interval_sec: 30
+  stale_minutes: 5
+
+callsign_prefix: "RNS-"
