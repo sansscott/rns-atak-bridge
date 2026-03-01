@@ -5,7 +5,12 @@ rns:
   peer_port: 4242
   home_lat: 0.0           # Your location — used as fallback when peer has no GPS announce
   home_lon: 0.0
-  # node_identity: ""     # Optional: your rnsd transport identity hash for self-track
+
+  # Your rnsd transport identity hash — enables self-track (your node appears in ATAK).
+  # Find it by running: rnstatus
+  # Copy the value after "Transport Identity:" and paste it here.
+  # Leave blank to disable self-track.
+  node_identity: ""
 
 atak:
   multicast_addr: 239.2.3.1
