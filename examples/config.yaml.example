@@ -11,8 +11,16 @@ rns:
   peer_port: 4242
 
   # Home coordinates — used as fallback when a peer has no GPS data in its announce
-  home_lat: 0.0
-  home_lon: 0.0
+  home_lat: 41.7001
+  home_lon: -74.0000
+
+  # Your rnsd transport identity hash — enables self-track (your node appears in ATAK).
+  # How to find it:
+  #   1. Run: rnstatus
+  #   2. Copy the hash shown after "Transport Identity:"
+  #   3. Paste it below (without quotes)
+  # Leave blank ("") to disable self-track.
+  node_identity: ""
 
 atak:
   # Standard ATAK SA multicast group (works on any LAN with ATAK devices)
@@ -29,5 +37,5 @@ atak:
   # Track stale time in minutes — ATAK removes the icon when it expires
   stale_minutes: 5
 
-# Prefix added to the first 8 chars of a peer's destination hash
+# Prefix added to the first 8 chars of a peer's destination hash to form the callsign
 callsign_prefix: "RNS-"
