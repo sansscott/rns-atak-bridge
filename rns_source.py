@@ -15,6 +15,11 @@ Both modes return a list of RNSPeer dicts:
     "lat":       float, # GPS lat if available, else home_lat from config
     "lon":       float, # GPS lon if available, else home_lon from config
   }
+
+Note on first-poll latency (native mode):
+  RNS populates its path table by receiving announces from peers. After startup
+  it may take 30–120 seconds before remote peers appear. The first poll often
+  returns 0 peers — this is normal. Subsequent polls fill in as announces arrive.
 """
 
 import logging
@@ -27,6 +32,11 @@ log = logging.getLogger(__name__)
 
 _rns_initialized = False
 _rns_instance = None
+
+# How long to wait after RNS init before the first path-table read.
+# Announcements take time to arrive; 15s catches the first wave on a busy network.
+# Subsequent polls (every poll_interval_sec) will see more peers as they announce.
+_RNS_INIT_WAIT_SEC = 15
 
 
 # ---------------------------------------------------------------------------
@@ -41,11 +51,12 @@ def _init_native_rns(peer_host: str, peer_port: int, config_dir: str = "/tmp/rns
 
     import RNS
     import os
-    import configparser
 
     os.makedirs(config_dir, exist_ok=True)
 
-    # Write a minimal RNS config that connects to the target rnsd TCP server
+    # Write a minimal RNS config that connects to the target rnsd TCP server.
+    # share_instance=No so we don't interfere with a running system rnsd.
+    # enable_transport=No: we are a client, not a relay node.
     rns_config_path = os.path.join(config_dir, "config")
     config_content = f"""[main]
   share_instance = No
@@ -62,13 +73,23 @@ def _init_native_rns(peer_host: str, peer_port: int, config_dir: str = "/tmp/rns
     with open(rns_config_path, "w") as f:
         f.write(config_content)
 
-    log.info(f"Initializing RNS, peering with {peer_host}:{peer_port}")
+    log.info(f"Initializing RNS — peering with {peer_host}:{peer_port}")
     _rns_instance = RNS.Reticulum(configdir=config_dir)
     _rns_initialized = True
 
-    # Allow a moment for initial path table population
-    time.sleep(2)
-    log.info("RNS initialized")
+    # Wait for announces to arrive and populate the path table.
+    # 15 seconds catches the first wave; subsequent polls see more peers.
+    log.info(f"Waiting {_RNS_INIT_WAIT_SEC}s for path table to populate (normal on first start)...")
+    for i in range(_RNS_INIT_WAIT_SEC):
+        time.sleep(1)
+        n = len(RNS.Transport.path_table)
+        if n > 0 and i >= 4:
+            # Have at least some peers and waited at least 5s — good enough
+            log.info(f"Path table has {n} entries after {i+1}s — starting")
+            return
+
+    n = len(RNS.Transport.path_table)
+    log.info(f"RNS ready — {n} path table entries (more will arrive on subsequent polls)")
 
 
 def get_peers_native(cfg: dict) -> list[dict]:
@@ -82,8 +103,14 @@ def get_peers_native(cfg: dict) -> list[dict]:
 
     _init_native_rns(peer_host, peer_port)
 
-    # path_table: {hash_bytes: [timestamp, received_from, hops, expires, blobs, interface_obj, pkt_hash]}
+    # path_table: {hash_bytes: [timestamp, next_hop, hops, expires, blobs, interface_obj, pkt_hash]}
+    # Indices confirmed against RNS Transport.py constants:
+    #   IDX_PT_HOPS=2, IDX_PT_RVCD_IF=5
     path_table = RNS.Transport.path_table
+
+    if not path_table:
+        log.info("[native] Path table empty — peers not yet announced. Will retry next poll.")
+        return []
 
     peers = []
     for dest_hash_bytes, entry in path_table.items():
@@ -103,7 +130,7 @@ def get_peers_native(cfg: dict) -> list[dict]:
         except Exception as e:
             log.warning(f"Skipping malformed path_table entry: {e}")
 
-    log.info(f"[native] Found {len(peers)} peers in path table")
+    log.info(f"[native] {len(peers)} peers in path table")
     return peers
 
 
@@ -123,7 +150,6 @@ def get_peers_rest(cfg: dict) -> list[dict]:
         resp = requests.get(f"{base_url}/paths", timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
-        # Response: {"result": {"paths": [{destination_hash, next_hop, hops}], "count": N}}
         result = data.get("result", data)
         path_list = result.get("paths", [])
 
@@ -139,7 +165,7 @@ def get_peers_rest(cfg: dict) -> list[dict]:
                 "lon": home_lon,
             })
 
-        log.info(f"[rest] Found {len(peers)} peers from {base_url}/paths")
+        log.info(f"[rest] {len(peers)} peers from {base_url}/paths")
 
     except requests.exceptions.ConnectionError:
         log.error(f"[rest] Cannot connect to reticulum-mcp at {base_url}")
@@ -156,8 +182,17 @@ def get_peers_rest(cfg: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def get_local_identity(cfg: dict) -> Optional[str]:
-    """Return the local node's identity hash (for including self as a track)."""
+    """
+    Return the local node identity hash for including self as a track in ATAK.
+
+    Native mode: reads node_identity from config.yaml (recommended — set this to
+    your rnsd transport identity, found via `rnstatus`). Falls back to the bridge's
+    own RNS instance identity, which may be None if transport is disabled.
+
+    REST mode: queries /status on the reticulum-mcp API.
+    """
     mode = cfg["rns"].get("mode", "native")
+
     if mode == "rest":
         try:
             base_url = cfg["rns"]["rest_url"].rstrip("/")
@@ -169,19 +204,23 @@ def get_local_identity(cfg: dict) -> Optional[str]:
             log.warning(f"Could not fetch local identity via REST: {e}")
             return None
     else:
-        # Check config-supplied identity first (always available, no RNS init needed)
+        # Prefer config-supplied identity — always works, no RNS init required.
+        # Set node_identity in config.yaml to your rnsd identity hash (run `rnstatus`).
         identity_hash = cfg["rns"].get("node_identity")
-        if identity_hash:
-            return identity_hash
-        # Fall back to bridge's own RNS identity
+        if identity_hash and identity_hash.strip():
+            log.debug(f"Using config-supplied node identity: {identity_hash[:16]}...")
+            return identity_hash.strip()
+
+        # Fallback: bridge's own RNS instance identity.
+        # May be None when enable_transport=No (common case).
         try:
             import RNS
-            if _rns_initialized:
-                own_id = RNS.Transport.identity
-                if own_id:
-                    return own_id.hash.hex()
+            if _rns_initialized and RNS.Transport.identity:
+                return RNS.Transport.identity.hash.hex()
         except Exception:
             pass
+
+        log.debug("No local identity available — self-track disabled. Set node_identity in config.yaml to enable.")
         return None
 
 
