@@ -82,26 +82,26 @@ def get_peers_native(cfg: dict) -> list[dict]:
 
     _init_native_rns(peer_host, peer_port)
 
-    try:
-        path_table = RNS.Transport.get_path_table()
-    except Exception as e:
-        log.error(f"Failed to read RNS path table: {e}")
-        return []
+    # path_table: {hash_bytes: [timestamp, received_from, hops, expires, blobs, interface_obj, pkt_hash]}
+    path_table = RNS.Transport.path_table
 
     peers = []
-    for entry in path_table:
-        # entry keys: hash (bytes or hex str), hops (int), expires (float), interface (str|None)
-        dest_hash = entry.get("hash")
-        if isinstance(dest_hash, bytes):
-            dest_hash = dest_hash.hex()
+    for dest_hash_bytes, entry in path_table.items():
+        try:
+            dest_hash = dest_hash_bytes.hex()
+            hops = entry[2] if len(entry) > 2 else 0
+            iface_obj = entry[5] if len(entry) > 5 else None
+            iface_name = str(iface_obj.name) if iface_obj and hasattr(iface_obj, "name") else "unknown"
 
-        peers.append({
-            "hash": dest_hash,
-            "hops": entry.get("hops", 0),
-            "interface": entry.get("interface") or "unknown",
-            "lat": home_lat,
-            "lon": home_lon,
-        })
+            peers.append({
+                "hash": dest_hash,
+                "hops": hops,
+                "interface": iface_name,
+                "lat": home_lat,
+                "lon": home_lon,
+            })
+        except Exception as e:
+            log.warning(f"Skipping malformed path_table entry: {e}")
 
     log.info(f"[native] Found {len(peers)} peers in path table")
     return peers
@@ -171,10 +171,16 @@ def get_local_identity(cfg: dict) -> Optional[str]:
     else:
         try:
             import RNS
-            if _rns_initialized and _rns_instance:
-                return RNS.prettyhex(RNS.Identity.full_hash(
-                    _rns_instance.get_identity().get_public_key()
-                ))[:32]
+            if _rns_initialized:
+                # Use the transport node's identity (the rnsd we peered with sends its own identity hash)
+                # Fall back to config-supplied identity if known
+                identity_hash = cfg["rns"].get("node_identity")
+                if identity_hash:
+                    return identity_hash
+                # Otherwise use our own bridge identity
+                own_id = RNS.Transport.identity
+                if own_id:
+                    return own_id.hash.hex()
         except Exception:
             pass
         return None

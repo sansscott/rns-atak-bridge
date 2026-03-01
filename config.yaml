@@ -5,6 +5,7 @@ rns:
   peer_port: 4242
   home_lat: 41.7001       # Fallback lat when peer has no GPS announce
   home_lon: -74.0
+  node_identity: af60a4f4863c9bff05a9871359d67e1f  # Local rnsd transport identity
 
 atak:
   multicast_addr: 239.2.3.1
